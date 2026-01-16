@@ -56,7 +56,7 @@ create table dat_phong (
     NgayNhan datetime not null,
     NgayTra datetime not null,
     TrangThai nvarchar(30)
-        check (TrangThai in (N'đã đặt', N'đã nhận phòng', N'hủy')),
+        check (TrangThai in (N'đã đặt', N'đã nhận phòng', N'hủy', N'đã trả phòng')),
     foreign key (MaKH) references khach_hang(MaKH),
     foreign key (MaNV) references nhan_vien(MaNV),
     check (NgayTra > NgayNhan)
@@ -84,6 +84,56 @@ create table thanh_toan (
     TrangThai nvarchar(30),
     foreign key (MaDatPhong) references dat_phong(MaDatPhong)
 );
+go
+
+-- ===== insert bang khach_hang =====
+insert into khach_hang (HoTen, CCCD, DienThoai, Email, DiaChi)
+values
+(N'Nguyễn Văn An', '012345678901', '0901234567', 'an@gmail.com', N'Hà Nội'),
+(N'Trần Thị Bình', '012345678902', '0912345678', 'binh@gmail.com', N'Đà Nẵng'),
+(N'Lê Văn Cường', '012345678903', '0923456789', 'cuong@gmail.com', N'TP HCM');
+
+-- ===== insert bang nhan_vien =====
+insert into nhan_vien (TenNV, VaiTro, Username, Password)
+values
+(N'Phạm Thị Lan', N'Lễ tân', 'lanpt', '123456'),
+(N'Nguyễn Văn Hùng', N'Quản lý', 'hungnv', '123456');
+
+-- ===== insert bang loai_phong =====
+insert into loai_phong (TenLoaiPhong, SucChua, GiaCoBan, MoTa)
+values
+(N'Phòng đơn', 1, 500000, N'Phòng dành cho 1 người'),
+(N'Phòng đôi', 2, 800000, N'Phòng dành cho 2 người'),
+(N'Phòng hội nghị', 50, 3000000, N'Phòng hội nghị lớn');
+
+-- ===== insert bang phong =====
+insert into phong (MaLoaiPhong, TenPhong, Tang, TrangThai)
+values
+(1, N'P101', 1, N'trống'),
+(1, N'P102', 1, N'trống'),
+(2, N'P201', 2, N'trống'),
+(2, N'P202', 2, N'trống'),
+(3, N'HN01', 3, N'trống');
+
+-- ===== insert bang dat_phong =====
+insert into dat_phong (MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
+values
+(1, 1, '2026-01-20', '2026-01-22', N'đã đặt'),
+(2, 1, '2026-01-21', '2026-01-23', N'đã đặt');
+
+-- ===== insert bang chi_tiet_dat_phong =====
+insert into chi_tiet_dat_phong (MaDatPhong, MaPhong, DonGia, SoNgay)
+values
+(1, 1, 500000, 2),
+(1, 2, 500000, 2),
+(2, 3, 800000, 2);
+
+-- ===== insert bang thanh_toan =====
+insert into thanh_toan (MaDatPhong, NgayThanhToan, SoTien, PhuongThuc, TrangThai)
+values
+(1, '2026-01-22', 2000000, N'Tiền mặt', N'Đã thanh toán'),
+(2, '2026-01-23', 1600000, N'Chuyển khoản', N'Đã thanh toán');
+
 go
 
 -- function

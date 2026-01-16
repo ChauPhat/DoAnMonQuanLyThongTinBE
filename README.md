@@ -10,6 +10,7 @@ Project đọc cấu hình từ biến môi trường (xem `src/main/resources/a
 - `DB_USERNAME`
 - `DB_PASSWORD`
 - `APP_PORT` (mặc định `8080`)
+- `CORS_ALLOWED_ORIGIN_PATTERNS` (mặc định `*`, có thể truyền nhiều giá trị cách nhau bằng dấu phẩy)
 
 ## Chạy
 Project đã có Gradle Wrapper, nên bạn không cần cài Gradle.
@@ -27,7 +28,9 @@ Swagger UI:
 - `http://localhost:8080/swagger`
 
 ## Lưu ý quan trọng về DB script
-Script DB đã được lưu lại để tiện chạy lại: [database/ql_dat_phong.sql](database/ql_dat_phong.sql)
+Script DB đã được lưu lại để tiện chạy lại (kèm dữ liệu mẫu): [database/ql_dat_phong.sql](database/ql_dat_phong.sql)
+
+Lưu ý: file SQL này có dùng `GO` để tách batch, nên hãy chạy bằng SSMS / Azure Data Studio (hoặc tool nào hỗ trợ `GO`).
 
 Trong script, cột `dat_phong.TrangThai` chỉ cho phép: `đã đặt`, `đã nhận phòng`, `hủy`.
 Nhưng stored procedure `sp_traPhong` lại cập nhật `TrangThai = 'đã trả phòng'` nên có thể bị lỗi CHECK constraint khi gọi.
