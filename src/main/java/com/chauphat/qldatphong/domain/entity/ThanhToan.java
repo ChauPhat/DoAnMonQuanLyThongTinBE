@@ -20,7 +20,7 @@ public class ThanhToan {
     private Integer maThanhToan;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "MaDatPhong", unique = true)
+    @JoinColumn(name = "MaDatPhong", nullable = false, unique = true)
     private DatPhong datPhong;
 
     @Column(name = "NgayThanhToan")

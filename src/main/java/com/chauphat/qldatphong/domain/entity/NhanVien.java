@@ -16,15 +16,15 @@ public class NhanVien {
     @Column(name = "MaNV")
     private Integer maNv;
 
-    @Column(name = "TenNV", length = 100)
+    @Column(name = "TenNV", nullable = false, length = 100)
     private String tenNv;
 
-    @Column(name = "VaiTro", length = 50)
+    @Column(name = "VaiTro", nullable = false, length = 50)
     private String vaiTro;
 
-    @Column(name = "Username", length = 50, unique = true)
+    @Column(name = "Username", nullable = false, length = 50, unique = true)
     private String username;
 
-    @Column(name = "Password", length = 255)
+    @Column(name = "Password", nullable = false, length = 255)
     private String password;
 }

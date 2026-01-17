@@ -38,8 +38,12 @@ public class NhanVienService {
             existing.setUsername(patch.getUsername());
         }
 
-        existing.setTenNv(patch.getTenNv());
-        existing.setVaiTro(patch.getVaiTro());
+        if (patch.getTenNv() != null) {
+            existing.setTenNv(patch.getTenNv());
+        }
+        if (patch.getVaiTro() != null) {
+            existing.setVaiTro(patch.getVaiTro());
+        }
 
         // For simplicity, allow updating password (null means keep old)
         if (patch.getPassword() != null) {

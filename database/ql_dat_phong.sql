@@ -41,10 +41,10 @@ go
 
 create table nhan_vien (
     MaNV int identity primary key,
-    TenNV nvarchar(100),
-    VaiTro nvarchar(50),
-    Username varchar(50) unique,
-    Password varchar(255)
+    TenNV nvarchar(100) not null,
+    VaiTro nvarchar(50) not null,
+    Username varchar(50) not null unique,
+    Password varchar(255) not null
 );
 go
 
@@ -77,7 +77,7 @@ go
 
 create table thanh_toan (
     MaThanhToan int identity primary key,
-    MaDatPhong int unique,
+    MaDatPhong int not null unique,
     NgayThanhToan datetime,
     SoTien decimal(18,2),
     PhuongThuc nvarchar(50),
@@ -86,27 +86,27 @@ create table thanh_toan (
 );
 go
 
--- ===== insert bang khach_hang =====
+-- insert bang khach_hang
 insert into khach_hang (HoTen, CCCD, DienThoai, Email, DiaChi)
 values
 (N'Nguyễn Văn An', '012345678901', '0901234567', 'an@gmail.com', N'Hà Nội'),
 (N'Trần Thị Bình', '012345678902', '0912345678', 'binh@gmail.com', N'Đà Nẵng'),
 (N'Lê Văn Cường', '012345678903', '0923456789', 'cuong@gmail.com', N'TP HCM');
 
--- ===== insert bang nhan_vien =====
+-- insert bang nhan_vien
 insert into nhan_vien (TenNV, VaiTro, Username, Password)
 values
 (N'Phạm Thị Lan', N'Lễ tân', 'lanpt', '123456'),
 (N'Nguyễn Văn Hùng', N'Quản lý', 'hungnv', '123456');
 
--- ===== insert bang loai_phong =====
+-- insert bang loai_phong 
 insert into loai_phong (TenLoaiPhong, SucChua, GiaCoBan, MoTa)
 values
 (N'Phòng đơn', 1, 500000, N'Phòng dành cho 1 người'),
 (N'Phòng đôi', 2, 800000, N'Phòng dành cho 2 người'),
 (N'Phòng hội nghị', 50, 3000000, N'Phòng hội nghị lớn');
 
--- ===== insert bang phong =====
+--  insert bang phong 
 insert into phong (MaLoaiPhong, TenPhong, Tang, TrangThai)
 values
 (1, N'P101', 1, N'trống'),
@@ -115,20 +115,20 @@ values
 (2, N'P202', 2, N'trống'),
 (3, N'HN01', 3, N'trống');
 
--- ===== insert bang dat_phong =====
+-- insert bang dat_phong
 insert into dat_phong (MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
 values
 (1, 1, '2026-01-20', '2026-01-22', N'đã đặt'),
 (2, 1, '2026-01-21', '2026-01-23', N'đã đặt');
 
--- ===== insert bang chi_tiet_dat_phong =====
+-- insert bang chi_tiet_dat_phong
 insert into chi_tiet_dat_phong (MaDatPhong, MaPhong, DonGia, SoNgay)
 values
 (1, 1, 500000, 2),
 (1, 2, 500000, 2),
 (2, 3, 800000, 2);
 
--- ===== insert bang thanh_toan =====
+-- insert bang thanh_toan
 insert into thanh_toan (MaDatPhong, NgayThanhToan, SoTien, PhuongThuc, TrangThai)
 values
 (1, '2026-01-22', 2000000, N'Tiền mặt', N'Đã thanh toán'),
@@ -169,7 +169,7 @@ as
 begin
     if update(TrangThai)
     begin
-        update phong
+        update p
         set TrangThai = N'đang thuê'
         from phong p
         join chi_tiet_dat_phong ct on p.MaPhong = ct.MaPhong
@@ -204,6 +204,9 @@ begin
     select @SoNgay = dbo.fn_tinhSoNgayThue(NgayNhan, NgayTra)
     from dat_phong
     where MaDatPhong = @MaDatPhong;
+
+    if (@SoNgay is null or @SoNgay < 1)
+        set @SoNgay = 1;
 
     insert into chi_tiet_dat_phong(MaDatPhong, MaPhong, DonGia, SoNgay)
     values (@MaDatPhong, @MaPhong, @DonGia, @SoNgay);

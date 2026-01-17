@@ -23,8 +23,8 @@ public class NhanVienController {
     private final NhanVienMapper mapper;
 
     public record CreateNhanVienRequest(
-            @Size(max = 100) String tenNv,
-            @Size(max = 50) String vaiTro,
+            @NotBlank @Size(max = 100) String tenNv,
+            @NotBlank @Size(max = 50) String vaiTro,
             @NotBlank @Size(max = 50) String username,
             @NotBlank @Size(max = 255) String password
     ) {
