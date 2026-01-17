@@ -22,9 +22,9 @@ public class DatPhongProcedureController {
     private final DatPhongProcedureService service;
 
     @PostMapping("/dat-phong")
-    public ApiResponse<Void> datPhong(@Valid @RequestBody DatPhongRequest req) {
-        service.datPhong(req.maKh(), req.maNv(), req.ngayNhan(), req.ngayTra());
-        return ApiResponse.ok(null);
+    public ApiResponse<Integer> datPhong(@Valid @RequestBody DatPhongRequest req) {
+        Integer maDatPhong = service.datPhong(req.maKh(), req.maNv(), req.ngayNhan(), req.ngayTra());
+        return ApiResponse.ok(maDatPhong);
     }
 
     @PostMapping("/them-chi-tiet")

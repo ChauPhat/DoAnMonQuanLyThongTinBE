@@ -5,6 +5,7 @@ import com.chauphat.qldatphong.domain.entity.LoaiPhong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
@@ -27,7 +28,7 @@ public class DatPhongProcedureService {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
-    public void datPhong(Integer maKh, Integer maNv, LocalDateTime ngayNhan, LocalDateTime ngayTra) {
+        public Integer datPhong(Integer maKh, Integer maNv, LocalDateTime ngayNhan, LocalDateTime ngayTra) {
         SimpleJdbcCall call = new SimpleJdbcCall(dataSource)
                 .withSchemaName("dbo")
                 .withProcedureName("sp_datPhong")
@@ -36,7 +37,8 @@ public class DatPhongProcedureService {
                         new SqlParameter("MaKH", Types.INTEGER),
                         new SqlParameter("MaNV", Types.INTEGER),
                         new SqlParameter("NgayNhan", Types.TIMESTAMP),
-                        new SqlParameter("NgayTra", Types.TIMESTAMP)
+                new SqlParameter("NgayTra", Types.TIMESTAMP),
+                new SqlOutParameter("MaDatPhong", Types.INTEGER)
                 );
 
         MapSqlParameterSource params = new MapSqlParameterSource()
@@ -45,7 +47,9 @@ public class DatPhongProcedureService {
                 .addValue("NgayNhan", Timestamp.valueOf(ngayNhan))
                 .addValue("NgayTra", Timestamp.valueOf(ngayTra));
 
-        call.execute(params);
+        Map<String, Object> out = call.execute(params);
+        Object id = out.get("MaDatPhong");
+        return id instanceof Number ? ((Number) id).intValue() : null;
     }
 
     public void themChiTietDatPhong(Integer maDatPhong, Integer maPhong, BigDecimal donGia) {

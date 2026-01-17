@@ -184,11 +184,13 @@ create procedure sp_datPhong
     @MaKH int,
     @MaNV int,
     @NgayNhan datetime,
-    @NgayTra datetime
+        @NgayTra datetime,
+        @MaDatPhong int output
 as
 begin
     insert into dat_phong(MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
     values (@MaKH, @MaNV, @NgayNhan, @NgayTra, N'đã đặt');
+        set @MaDatPhong = SCOPE_IDENTITY(); -- Capture the newly created MaDatPhong
 end;
 go
 
