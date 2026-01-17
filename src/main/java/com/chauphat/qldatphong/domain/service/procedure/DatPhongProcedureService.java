@@ -93,6 +93,26 @@ public class DatPhongProcedureService {
         return (List<Phong>) out.get("result");
     }
 
+        @SuppressWarnings("unchecked")
+        public List<Phong> phongDaDat(LocalDateTime tuNgay, LocalDateTime denNgay) {
+        SimpleJdbcCall call = new SimpleJdbcCall(dataSource)
+            .withSchemaName("dbo")
+            .withProcedureName("sp_phongDaDatTheoKhoangThoiGian")
+            .withoutProcedureColumnMetaDataAccess()
+            .declareParameters(
+                new SqlParameter("TuNgay", Types.TIMESTAMP),
+                new SqlParameter("DenNgay", Types.TIMESTAMP)
+            )
+            .returningResultSet("result", new PhongRowMapper());
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+            .addValue("TuNgay", Timestamp.valueOf(tuNgay))
+            .addValue("DenNgay", Timestamp.valueOf(denNgay));
+
+        Map<String, Object> out = call.execute(params);
+        return (List<Phong>) out.get("result");
+        }
+
     public BigDecimal tinhDoanhThuTheoThang(int thang, int nam) {
         BigDecimal value = jdbcTemplate.queryForObject(
                 "exec dbo.sp_tinhDoanhThuTheoThang ?, ?",

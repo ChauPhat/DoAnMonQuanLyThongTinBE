@@ -3,6 +3,7 @@ package com.chauphat.qldatphong.api.controller;
 import com.chauphat.qldatphong.api.dto.PhongDto;
 import com.chauphat.qldatphong.api.dto.procedure.DatPhongRequest;
 import com.chauphat.qldatphong.api.dto.procedure.DoanhThuTheoThangRequest;
+import com.chauphat.qldatphong.api.dto.procedure.PhongDaDatRequest;
 import com.chauphat.qldatphong.api.dto.procedure.ThemChiTietDatPhongRequest;
 import com.chauphat.qldatphong.api.dto.procedure.TraPhongRequest;
 import com.chauphat.qldatphong.common.ApiResponse;
@@ -51,6 +52,25 @@ public class DatPhongProcedureController {
                 r.getTrangThai()
             ))
                 .toList();
+        return ApiResponse.ok(dto);
+    }
+
+    @PostMapping("/phong-da-dat")
+    public ApiResponse<List<PhongDto>> phongDaDat(@Valid @RequestBody PhongDaDatRequest req) {
+        if (!req.denNgay().isAfter(req.tuNgay())) {
+            throw new IllegalArgumentException("denNgay phải lớn hơn tuNgay");
+        }
+
+        List<Phong> rooms = service.phongDaDat(req.tuNgay(), req.denNgay());
+        List<PhongDto> dto = rooms.stream()
+            .map(r -> new PhongDto(
+                r.getMaPhong(),
+                r.getLoaiPhong() != null ? r.getLoaiPhong().getMaLoaiPhong() : null,
+                r.getTenPhong(),
+                r.getTang(),
+                r.getTrangThai()
+            ))
+            .toList();
         return ApiResponse.ok(dto);
     }
 

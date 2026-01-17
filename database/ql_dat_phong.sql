@@ -155,9 +155,19 @@ on chi_tiet_dat_phong
 after insert, update
 as
 begin
-    update chi_tiet_dat_phong
-    set ThanhTien = DonGia * SoNgay
-    where MaCTDP in (select MaCTDP from inserted);
+    set nocount on;
+
+    -- Avoid recursive updates: only recalc when inputs change (or on insert)
+    if (update(DonGia) or update(SoNgay))
+    begin
+        update ct
+        set ThanhTien = ct.DonGia * ct.SoNgay
+        from chi_tiet_dat_phong ct
+        join inserted i on ct.MaCTDP = i.MaCTDP
+        where ct.DonGia is not null
+          and ct.SoNgay is not null
+          and (ct.ThanhTien is null or ct.ThanhTien <> ct.DonGia * ct.SoNgay);
+    end
 end;
 go
 
@@ -167,14 +177,23 @@ on dat_phong
 after update
 as
 begin
+    set nocount on;
+
     if update(TrangThai)
     begin
+        -- Keep room status in sync with booking status.
+        -- 'đã nhận phòng' => phòng 'đang thuê'
+        -- 'đã trả phòng'/'hủy' => phòng 'trống'
         update p
-        set TrangThai = N'đang thuê'
+        set TrangThai = case
+            when i.TrangThai = N'đã nhận phòng' then N'đang thuê'
+            when i.TrangThai in (N'đã trả phòng', N'hủy') then N'trống'
+            else p.TrangThai
+        end
         from phong p
         join chi_tiet_dat_phong ct on p.MaPhong = ct.MaPhong
         join inserted i on ct.MaDatPhong = i.MaDatPhong
-        where i.TrangThai = N'đã nhận phòng';
+        where i.TrangThai in (N'đã nhận phòng', N'đã trả phòng', N'hủy');
     end
 end;
 go
@@ -202,6 +221,25 @@ create procedure sp_themChiTietDatPhong
 as
 begin
     declare @SoNgay int;
+
+    -- Basic validation for cleaner demo behavior
+    if not exists (select 1 from dat_phong where MaDatPhong = @MaDatPhong)
+    begin
+        raiserror(N'MaDatPhong không tồn tại', 16, 1);
+        return;
+    end
+
+    if not exists (select 1 from phong where MaPhong = @MaPhong)
+    begin
+        raiserror(N'MaPhong không tồn tại', 16, 1);
+        return;
+    end
+
+    if exists (select 1 from phong where MaPhong = @MaPhong and TrangThai <> N'trống')
+    begin
+        raiserror(N'Phòng không ở trạng thái trống', 16, 1);
+        return;
+    end
 
     select @SoNgay = dbo.fn_tinhSoNgayThue(NgayNhan, NgayTra)
     from dat_phong
@@ -241,6 +279,26 @@ begin
     select *
     from phong
     where TrangThai = N'trống';
+end;
+go
+
+-- sp phong da dat theo khoang thoi gian
+create procedure sp_phongDaDatTheoKhoangThoiGian
+    @TuNgay datetime,
+    @DenNgay datetime
+as
+begin
+    set nocount on;
+
+    -- Overlap rule: [NgayNhan, NgayTra] overlaps [@TuNgay, @DenNgay]
+    -- dp.NgayNhan < @DenNgay AND dp.NgayTra > @TuNgay
+    select distinct p.*
+    from phong p
+    join chi_tiet_dat_phong ct on p.MaPhong = ct.MaPhong
+    join dat_phong dp on dp.MaDatPhong = ct.MaDatPhong
+    where dp.TrangThai in (N'đã đặt', N'đã nhận phòng')
+      and dp.NgayNhan < @DenNgay
+      and dp.NgayTra > @TuNgay;
 end;
 go
 
