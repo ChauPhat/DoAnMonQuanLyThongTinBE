@@ -190,7 +190,7 @@ as
 begin
     insert into dat_phong(MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
     values (@MaKH, @MaNV, @NgayNhan, @NgayTra, N'đã đặt');
-        set @MaDatPhong = SCOPE_IDENTITY(); -- Capture the newly created MaDatPhong
+    set @MaDatPhong = cast(SCOPE_IDENTITY() as int);
 end;
 go
 

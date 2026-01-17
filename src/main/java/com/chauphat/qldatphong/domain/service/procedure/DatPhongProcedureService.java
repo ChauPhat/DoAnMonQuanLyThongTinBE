@@ -5,8 +5,9 @@ import com.chauphat.qldatphong.domain.entity.LoaiPhong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.jdbc.core.SqlParameter;
+import org.springframework.jdbc.core.CallableStatementCallback;
+import org.springframework.jdbc.core.CallableStatementCreator;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.sql.CallableStatement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -28,28 +30,23 @@ public class DatPhongProcedureService {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
-        public Integer datPhong(Integer maKh, Integer maNv, LocalDateTime ngayNhan, LocalDateTime ngayTra) {
-        SimpleJdbcCall call = new SimpleJdbcCall(dataSource)
-                .withSchemaName("dbo")
-                .withProcedureName("sp_datPhong")
-                .withoutProcedureColumnMetaDataAccess()
-                .declareParameters(
-                        new SqlParameter("MaKH", Types.INTEGER),
-                        new SqlParameter("MaNV", Types.INTEGER),
-                        new SqlParameter("NgayNhan", Types.TIMESTAMP),
-                new SqlParameter("NgayTra", Types.TIMESTAMP),
-                new SqlOutParameter("MaDatPhong", Types.INTEGER)
-                );
-
-        MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("MaKH", maKh)
-                .addValue("MaNV", maNv)
-                .addValue("NgayNhan", Timestamp.valueOf(ngayNhan))
-                .addValue("NgayTra", Timestamp.valueOf(ngayTra));
-
-        Map<String, Object> out = call.execute(params);
-        Object id = out.get("MaDatPhong");
-        return id instanceof Number ? ((Number) id).intValue() : null;
+    public Integer datPhong(Integer maKh, Integer maNv, LocalDateTime ngayNhan, LocalDateTime ngayTra) {
+        return jdbcTemplate.execute(
+                (CallableStatementCreator) con -> {
+                    CallableStatement cs = con.prepareCall("{call dbo.sp_datPhong(?, ?, ?, ?, ?)}");
+                    cs.setInt(1, maKh);
+                    cs.setInt(2, maNv);
+                    cs.setTimestamp(3, Timestamp.valueOf(ngayNhan));
+                    cs.setTimestamp(4, Timestamp.valueOf(ngayTra));
+                    cs.registerOutParameter(5, Types.INTEGER);
+                    return cs;
+                },
+                (CallableStatementCallback<Integer>) cs -> {
+                    cs.execute();
+                    int id = cs.getInt(5);
+                    return cs.wasNull() ? null : id;
+                }
+        );
     }
 
     public void themChiTietDatPhong(Integer maDatPhong, Integer maPhong, BigDecimal donGia) {
