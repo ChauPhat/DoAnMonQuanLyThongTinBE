@@ -6,7 +6,9 @@ import com.chauphat.qldatphong.common.ApiResponse;
 import com.chauphat.qldatphong.domain.entity.Phong;
 import com.chauphat.qldatphong.domain.service.PhongService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,11 +24,15 @@ public class PhongController {
     private final PhongService service;
     private final PhongMapper mapper;
 
+    private static final String DEFAULT_TRANG_THAI = "trống";
+
     public record UpsertPhongRequest(
             @NotNull Integer maLoaiPhong,
-            @Size(max = 50) String tenPhong,
+            @NotBlank @Size(max = 50) String tenPhong,
             Integer tang,
-            @Size(max = 20) String trangThai
+            @Size(max = 20)
+            @Pattern(regexp = "^(trống|đang thuê|bảo trì)$", message = "trangThai phải là: trống, đang thuê, bảo trì")
+            String trangThai
     ) {
     }
 
@@ -46,7 +52,7 @@ public class PhongController {
                 .loaiPhong(com.chauphat.qldatphong.domain.entity.LoaiPhong.builder().maLoaiPhong(req.maLoaiPhong()).build())
                 .tenPhong(req.tenPhong())
                 .tang(req.tang())
-                .trangThai(req.trangThai())
+                .trangThai(req.trangThai() != null ? req.trangThai() : DEFAULT_TRANG_THAI)
                 .build();
         return ApiResponse.ok(mapper.toDto(service.create(entity)));
     }
@@ -57,7 +63,7 @@ public class PhongController {
                 .loaiPhong(com.chauphat.qldatphong.domain.entity.LoaiPhong.builder().maLoaiPhong(req.maLoaiPhong()).build())
                 .tenPhong(req.tenPhong())
                 .tang(req.tang())
-                .trangThai(req.trangThai())
+                .trangThai(req.trangThai() != null ? req.trangThai() : DEFAULT_TRANG_THAI)
                 .build();
         return ApiResponse.ok(mapper.toDto(service.update(id, patch)));
     }

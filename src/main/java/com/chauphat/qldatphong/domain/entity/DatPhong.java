@@ -26,7 +26,7 @@ public class DatPhong {
     @JoinColumn(name = "MaNV", nullable = false)
     private NhanVien nhanVien;
 
-    @Column(name = "NgayDat")
+    @Column(name = "NgayDat", nullable = false, insertable = false, updatable = false)
     private LocalDateTime ngayDat;
 
     @Column(name = "NgayNhan", nullable = false)
@@ -35,6 +35,6 @@ public class DatPhong {
     @Column(name = "NgayTra", nullable = false)
     private LocalDateTime ngayTra;
 
-    @Column(name = "TrangThai", length = 30)
+    @Column(name = "TrangThai", nullable = false, length = 30, insertable = false)
     private String trangThai;
 }

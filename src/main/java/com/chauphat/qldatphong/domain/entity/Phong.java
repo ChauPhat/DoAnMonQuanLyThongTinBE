@@ -20,12 +20,12 @@ public class Phong {
     @JoinColumn(name = "MaLoaiPhong", nullable = false)
     private LoaiPhong loaiPhong;
 
-    @Column(name = "TenPhong", length = 50)
+    @Column(name = "TenPhong", nullable = false, unique = true, length = 50)
     private String tenPhong;
 
     @Column(name = "Tang")
     private Integer tang;
 
-    @Column(name = "TrangThai", length = 20)
+    @Column(name = "TrangThai", nullable = false, length = 20)
     private String trangThai;
 }

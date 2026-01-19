@@ -21,10 +21,10 @@ public class LoaiPhong {
     @Column(name = "TenLoaiPhong", nullable = false, length = 100)
     private String tenLoaiPhong;
 
-    @Column(name = "SucChua")
+    @Column(name = "SucChua", nullable = false)
     private Integer sucChua;
 
-    @Column(name = "GiaCoBan", precision = 18, scale = 2)
+    @Column(name = "GiaCoBan", nullable = false, precision = 18, scale = 2)
     private BigDecimal giaCoBan;
 
     @Column(name = "MoTa", length = 255)

@@ -15,6 +15,8 @@ public class PhongService {
     private final PhongRepository repository;
     private final LoaiPhongRepository loaiPhongRepository;
 
+    private static final String DEFAULT_TRANG_THAI = "trống";
+
     public Page<Phong> list(Pageable pageable) {
         return repository.findAll(pageable);
     }
@@ -30,6 +32,11 @@ public class PhongService {
         LoaiPhong loaiPhong = loaiPhongRepository.findById(maLoaiPhong)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng: " + maLoaiPhong));
         entity.setLoaiPhong(loaiPhong);
+
+        if (entity.getTrangThai() == null) {
+            entity.setTrangThai(DEFAULT_TRANG_THAI);
+        }
+
         return repository.save(entity);
     }
 
@@ -43,9 +50,13 @@ public class PhongService {
             existing.setLoaiPhong(loaiPhong);
         }
 
-        existing.setTenPhong(patch.getTenPhong());
+        if (patch.getTenPhong() != null) {
+            existing.setTenPhong(patch.getTenPhong());
+        }
         existing.setTang(patch.getTang());
-        existing.setTrangThai(patch.getTrangThai());
+        if (patch.getTrangThai() != null) {
+            existing.setTrangThai(patch.getTrangThai());
+        }
         return repository.save(existing);
     }
 

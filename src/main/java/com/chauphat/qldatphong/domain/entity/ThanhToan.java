@@ -19,19 +19,19 @@ public class ThanhToan {
     @Column(name = "MaThanhToan")
     private Integer maThanhToan;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "MaDatPhong", nullable = false, unique = true)
     private DatPhong datPhong;
 
     @Column(name = "NgayThanhToan")
     private LocalDateTime ngayThanhToan;
 
-    @Column(name = "SoTien", precision = 18, scale = 2)
+    @Column(name = "SoTien", nullable = false, precision = 18, scale = 2)
     private BigDecimal soTien;
 
     @Column(name = "PhuongThuc", length = 50)
     private String phuongThuc;
 
-    @Column(name = "TrangThai", length = 30)
+    @Column(name = "TrangThai", nullable = false, length = 30)
     private String trangThai;
 }

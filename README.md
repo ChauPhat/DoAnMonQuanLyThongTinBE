@@ -39,18 +39,17 @@ Các API danh mục để chuẩn bị dữ liệu demo:
 ### Nghiệp vụ (Stored Procedure)
 Các API dưới đây gọi thẳng Stored Procedure trong SQL Server:
 - `GET /api/proc/phong-trong` → `sp_phongTrong`
-- `POST /api/proc/dat-phong` → `sp_datPhong` (trả về `MaDatPhong`)
-- `POST /api/proc/them-chi-tiet` → `sp_themChiTietDatPhong` (tự tính `SoNgay` qua `fn_tinhSoNgayThue`)
+- `POST /api/proc/dat-phong-nhanh` → `sp_datPhongNhanh` (tạo `dat_phong` + tự thêm `chi_tiet_dat_phong`, trả về `MaDatPhong`)
+- `POST /api/proc/nhan-phong` → `sp_nhanPhong` (check-in)
 - `POST /api/proc/tra-phong` → `sp_traPhong`
+- `POST /api/proc/phong-da-dat` → `sp_phongDaDatTheoKhoangThoiGian`
 - `POST /api/proc/doanh-thu` → `sp_tinhDoanhThuTheoThang`
-
-Lưu ý: nếu bạn đã chạy version script cũ, hãy chạy lại [database/ql_dat_phong.sql](database/ql_dat_phong.sql) (hoặc `ALTER PROCEDURE sp_datPhong`) để có output `MaDatPhong`.
 
 Gợi ý trình tự demo nhanh:
 1) Tạo `nhan_vien`, `khach_hang`, `loai_phong`, `phong` (hoặc dùng dữ liệu mẫu trong script).
 2) Gọi `GET /api/proc/phong-trong` để lấy phòng trống.
-3) Gọi `POST /api/proc/dat-phong` để tạo đặt phòng (nhận `MaDatPhong`).
-4) Gọi `POST /api/proc/them-chi-tiet` để gắn phòng vào đặt phòng.
+3) Gọi `POST /api/proc/dat-phong-nhanh` để tạo đặt phòng + chi tiết (nhận `MaDatPhong`).
+4) (Tuỳ chọn) Gọi `POST /api/proc/nhan-phong` để nhận phòng (trigger sẽ đổi trạng thái phòng sang `đang thuê`).
 5) Gọi `POST /api/proc/tra-phong` để trả phòng.
 
 ### Trigger / Function / Cursor (trong script DB)

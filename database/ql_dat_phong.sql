@@ -22,8 +22,8 @@ go
 create table loai_phong (
     MaLoaiPhong int identity primary key,
     TenLoaiPhong nvarchar(100) not null,
-    SucChua int check (SucChua > 0),
-    GiaCoBan decimal(18,2) check (GiaCoBan > 0),
+    SucChua int not null check (SucChua > 0),
+    GiaCoBan decimal(18,2) not null check (GiaCoBan > 0),
     MoTa nvarchar(255)
 );
 go
@@ -31,9 +31,10 @@ go
 create table phong (
     MaPhong int identity primary key,
     MaLoaiPhong int not null,
-    TenPhong nvarchar(50),
+    TenPhong nvarchar(50) not null unique,
     Tang int,
-    TrangThai nvarchar(20)
+    TrangThai nvarchar(20) not null
+        default N'trống'
         check (TrangThai in (N'trống', N'đang thuê', N'bảo trì')),
     foreign key (MaLoaiPhong) references loai_phong(MaLoaiPhong)
 );
@@ -52,10 +53,11 @@ create table dat_phong (
     MaDatPhong int identity primary key,
     MaKH int not null,
     MaNV int not null,
-    NgayDat datetime default getdate(),
+    NgayDat datetime not null default getdate(),
     NgayNhan datetime not null,
     NgayTra datetime not null,
-    TrangThai nvarchar(30)
+    TrangThai nvarchar(30) not null
+        default N'đã đặt'
         check (TrangThai in (N'đã đặt', N'đã nhận phòng', N'hủy', N'đã trả phòng')),
     foreign key (MaKH) references khach_hang(MaKH),
     foreign key (MaNV) references nhan_vien(MaNV),
@@ -67,11 +69,12 @@ create table chi_tiet_dat_phong (
     MaCTDP int identity primary key,
     MaDatPhong int not null,
     MaPhong int not null,
-    DonGia decimal(18,2),
-    SoNgay int check (SoNgay > 0),
+    DonGia decimal(18,2) not null check (DonGia > 0),
+    SoNgay int not null check (SoNgay > 0),
     ThanhTien decimal(18,2),
     foreign key (MaDatPhong) references dat_phong(MaDatPhong),
-    foreign key (MaPhong) references phong(MaPhong)
+    foreign key (MaPhong) references phong(MaPhong),
+    constraint UQ_chi_tiet_dat_phong unique (MaDatPhong, MaPhong)
 );
 go
 
@@ -79,9 +82,11 @@ create table thanh_toan (
     MaThanhToan int identity primary key,
     MaDatPhong int not null unique,
     NgayThanhToan datetime,
-    SoTien decimal(18,2),
+    SoTien decimal(18,2) not null check (SoTien >= 0),
     PhuongThuc nvarchar(50),
-    TrangThai nvarchar(30),
+    TrangThai nvarchar(30) not null
+        default N'Đã thanh toán'
+        check (TrangThai in (N'Đã thanh toán', N'Chưa thanh toán', N'Hủy')),
     foreign key (MaDatPhong) references dat_phong(MaDatPhong)
 );
 go
@@ -198,58 +203,209 @@ begin
 end;
 go
 
--- sp dat phong
-create procedure sp_datPhong
+
+
+-- sp dat phong nhanh (tạo đặt phòng + tự thêm chi tiết theo danh sách phòng)
+create procedure sp_datPhongNhanh
     @MaKH int,
     @MaNV int,
     @NgayNhan datetime,
-        @NgayTra datetime,
-        @MaDatPhong int output
+    @NgayTra datetime,
+    @DanhSachMaPhong nvarchar(max),
+    @MaDatPhong int output
 as
 begin
-    insert into dat_phong(MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
-    values (@MaKH, @MaNV, @NgayNhan, @NgayTra, N'đã đặt');
-    set @MaDatPhong = cast(SCOPE_IDENTITY() as int);
+    set nocount on;
+
+    if (@NgayTra is null or @NgayNhan is null or @NgayTra <= @NgayNhan)
+    begin
+        raiserror(N'Khoảng ngày nhận/trả không hợp lệ', 16, 1);
+        return;
+    end
+
+    if not exists (select 1 from khach_hang where MaKH = @MaKH)
+    begin
+        raiserror(N'MaKH không tồn tại', 16, 1);
+        return;
+    end
+
+    if not exists (select 1 from nhan_vien where MaNV = @MaNV)
+    begin
+        raiserror(N'MaNV không tồn tại', 16, 1);
+        return;
+    end
+
+    if (@DanhSachMaPhong is null or ltrim(rtrim(@DanhSachMaPhong)) = N'')
+    begin
+        raiserror(N'Danh sách phòng không được rỗng', 16, 1);
+        return;
+    end
+
+    declare @SoNgay int = dbo.fn_tinhSoNgayThue(@NgayNhan, @NgayTra);
+    if (@SoNgay is null or @SoNgay < 1)
+        set @SoNgay = 1;
+
+    begin try
+        begin tran;
+
+        declare @RoomTokens table (
+            Token nvarchar(50) not null,
+            MaPhong int null
+        );
+
+        insert into @RoomTokens(Token, MaPhong)
+        select
+            ltrim(rtrim(value)) as Token,
+            try_cast(ltrim(rtrim(value)) as int) as MaPhong
+        from string_split(@DanhSachMaPhong, ',')
+        where ltrim(rtrim(value)) <> '';
+
+        if not exists (select 1 from @RoomTokens)
+        begin
+            raiserror(N'Danh sách phòng không được rỗng', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        -- Validate parsed room ids (non-numeric tokens)
+        if exists (select 1 from @RoomTokens where MaPhong is null)
+        begin
+            raiserror(N'Danh sách phòng không hợp lệ', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        declare @Rooms table (MaPhong int primary key);
+        insert into @Rooms(MaPhong)
+        select distinct MaPhong
+        from @RoomTokens;
+
+        if not exists (select 1 from @Rooms)
+        begin
+            raiserror(N'Danh sách phòng không được rỗng', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        -- Validate rooms exist
+        if exists (
+            select 1
+            from @Rooms r
+            left join phong p on p.MaPhong = r.MaPhong
+            where p.MaPhong is null
+        )
+        begin
+            raiserror(N'Có phòng không tồn tại', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        -- Block rooms in maintenance
+        if exists (
+            select 1
+            from @Rooms r
+            join phong p on p.MaPhong = r.MaPhong
+            where p.TrangThai = N'bảo trì'
+        )
+        begin
+            raiserror(N'Có phòng đang bảo trì', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        -- Prevent double-booking by date overlap
+        if exists (
+            select 1
+                        from @Rooms r
+            join chi_tiet_dat_phong ct on ct.MaPhong = r.MaPhong
+            join dat_phong dp on dp.MaDatPhong = ct.MaDatPhong
+            where dp.TrangThai in (N'đã đặt', N'đã nhận phòng')
+              and dp.NgayNhan < @NgayTra
+              and dp.NgayTra > @NgayNhan
+        )
+        begin
+            raiserror(N'Có phòng đã được đặt trong khoảng thời gian này', 16, 1);
+            rollback tran;
+            return;
+        end
+
+        insert into dat_phong(MaKH, MaNV, NgayNhan, NgayTra, TrangThai)
+        values (@MaKH, @MaNV, @NgayNhan, @NgayTra, N'đã đặt');
+
+        set @MaDatPhong = cast(scope_identity() as int);
+
+        insert into chi_tiet_dat_phong(MaDatPhong, MaPhong, DonGia, SoNgay)
+        select
+            @MaDatPhong,
+            p.MaPhong,
+            lp.GiaCoBan,
+            @SoNgay
+        from @Rooms r
+        join phong p on p.MaPhong = r.MaPhong
+        join loai_phong lp on lp.MaLoaiPhong = p.MaLoaiPhong;
+
+        commit tran;
+    end try
+    begin catch
+        if @@trancount > 0
+            rollback tran;
+        throw;
+    end catch
 end;
 go
 
--- sp them chi tiet dat phong
-create procedure sp_themChiTietDatPhong
-    @MaDatPhong int,
-    @MaPhong int,
-    @DonGia decimal(18,2)
+-- sp nhan phong (check-in)
+create procedure sp_nhanPhong
+    @MaDatPhong int
 as
 begin
-    declare @SoNgay int;
+    set nocount on;
 
-    -- Basic validation for cleaner demo behavior
     if not exists (select 1 from dat_phong where MaDatPhong = @MaDatPhong)
     begin
         raiserror(N'MaDatPhong không tồn tại', 16, 1);
         return;
     end
 
-    if not exists (select 1 from phong where MaPhong = @MaPhong)
+    if exists (
+        select 1
+        from dat_phong
+        where MaDatPhong = @MaDatPhong
+          and TrangThai in (N'hủy', N'đã trả phòng')
+    )
     begin
-        raiserror(N'MaPhong không tồn tại', 16, 1);
+        raiserror(N'Đặt phòng không hợp lệ để nhận phòng', 16, 1);
         return;
     end
 
-    if exists (select 1 from phong where MaPhong = @MaPhong and TrangThai <> N'trống')
+    if not exists (select 1 from chi_tiet_dat_phong where MaDatPhong = @MaDatPhong)
     begin
-        raiserror(N'Phòng không ở trạng thái trống', 16, 1);
+        raiserror(N'Đặt phòng chưa có chi tiết phòng', 16, 1);
         return;
     end
 
-    select @SoNgay = dbo.fn_tinhSoNgayThue(NgayNhan, NgayTra)
-    from dat_phong
-    where MaDatPhong = @MaDatPhong;
+    if exists (
+        select 1
+        from chi_tiet_dat_phong ct
+        join phong p on p.MaPhong = ct.MaPhong
+        where ct.MaDatPhong = @MaDatPhong
+          and p.TrangThai <> N'trống'
+    )
+    begin
+        raiserror(N'Có phòng không ở trạng thái trống', 16, 1);
+        return;
+    end
 
-    if (@SoNgay is null or @SoNgay < 1)
-        set @SoNgay = 1;
+    update dat_phong
+    set TrangThai = N'đã nhận phòng'
+    where MaDatPhong = @MaDatPhong
+      and TrangThai = N'đã đặt';
 
-    insert into chi_tiet_dat_phong(MaDatPhong, MaPhong, DonGia, SoNgay)
-    values (@MaDatPhong, @MaPhong, @DonGia, @SoNgay);
+    if @@rowcount = 0
+    begin
+        raiserror(N'Chỉ có thể nhận phòng khi trạng thái là "đã đặt"', 16, 1);
+        return;
+    end
 end;
 go
 
@@ -339,5 +495,71 @@ begin
 
     close cur_doanhthu;
     deallocate cur_doanhthu;
+end;
+go
+
+-- sp danh sach dat phong (phục vụ combobox: mã gần đây + search theo mã)
+create procedure sp_danhSachDatPhong
+    @Limit int = 20,
+    @Search nvarchar(50) = null
+as
+begin
+    set nocount on;
+
+    if (@Limit is null or @Limit < 1) set @Limit = 20;
+    if (@Limit > 100) set @Limit = 100;
+
+    select top (@Limit)
+        dp.MaDatPhong,
+        dp.MaKH,
+        kh.HoTen as HoTenKH,
+        dp.MaNV,
+        nv.TenNV,
+        dp.NgayDat,
+        dp.NgayNhan,
+        dp.NgayTra,
+        dp.TrangThai,
+        (select count(1) from chi_tiet_dat_phong ct where ct.MaDatPhong = dp.MaDatPhong) as SoPhong,
+        (
+            select sum(isnull(ct.ThanhTien, ct.DonGia * ct.SoNgay))
+            from chi_tiet_dat_phong ct
+            where ct.MaDatPhong = dp.MaDatPhong
+        ) as TongTien
+    from dat_phong dp
+    join khach_hang kh on kh.MaKH = dp.MaKH
+    join nhan_vien nv on nv.MaNV = dp.MaNV
+    where (@Search is null or ltrim(rtrim(@Search)) = N'')
+       or cast(dp.MaDatPhong as nvarchar(50)) like N'%' + ltrim(rtrim(@Search)) + N'%'
+    order by dp.MaDatPhong desc;
+end;
+go
+
+-- sp thong tin dat phong theo ma (phục vụ khi user gõ mã bất kỳ)
+create procedure sp_thongTinDatPhong
+    @MaDatPhong int
+as
+begin
+    set nocount on;
+
+    select
+        dp.MaDatPhong,
+        dp.MaKH,
+        kh.HoTen as HoTenKH,
+        dp.MaNV,
+        nv.TenNV,
+        dp.NgayDat,
+        dp.NgayNhan,
+        dp.NgayTra,
+        dp.TrangThai,
+        (select count(1) from chi_tiet_dat_phong ct where ct.MaDatPhong = dp.MaDatPhong) as SoPhong,
+        (
+            select sum(isnull(ct.ThanhTien, ct.DonGia * ct.SoNgay))
+            from chi_tiet_dat_phong ct
+            where ct.MaDatPhong = dp.MaDatPhong
+        ) as TongTien
+    from dat_phong dp
+    join khach_hang kh on kh.MaKH = dp.MaKH
+    join nhan_vien nv on nv.MaNV = dp.MaNV
+    where dp.MaDatPhong = @MaDatPhong;
 end;
 go

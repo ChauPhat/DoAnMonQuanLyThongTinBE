@@ -1,10 +1,11 @@
 package com.chauphat.qldatphong.api.controller;
 
 import com.chauphat.qldatphong.api.dto.PhongDto;
-import com.chauphat.qldatphong.api.dto.procedure.DatPhongRequest;
+import com.chauphat.qldatphong.api.dto.procedure.DatPhongNhanhRequest;
+import com.chauphat.qldatphong.api.dto.procedure.DatPhongSummaryDto;
 import com.chauphat.qldatphong.api.dto.procedure.DoanhThuTheoThangRequest;
+import com.chauphat.qldatphong.api.dto.procedure.NhanPhongRequest;
 import com.chauphat.qldatphong.api.dto.procedure.PhongDaDatRequest;
-import com.chauphat.qldatphong.api.dto.procedure.ThemChiTietDatPhongRequest;
 import com.chauphat.qldatphong.api.dto.procedure.TraPhongRequest;
 import com.chauphat.qldatphong.common.ApiResponse;
 import com.chauphat.qldatphong.domain.entity.Phong;
@@ -22,21 +23,41 @@ import java.util.List;
 public class DatPhongProcedureController {
     private final DatPhongProcedureService service;
 
-    @PostMapping("/dat-phong")
-    public ApiResponse<Integer> datPhong(@Valid @RequestBody DatPhongRequest req) {
-        Integer maDatPhong = service.datPhong(req.maKh(), req.maNv(), req.ngayNhan(), req.ngayTra());
-        return ApiResponse.ok(maDatPhong);
+    @GetMapping("/danh-sach-dat-phong")
+    public ApiResponse<List<DatPhongSummaryDto>> danhSachDatPhong(
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestParam(name = "q", required = false) String q
+    ) {
+        if (limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("limit phải trong khoảng 1..100");
+        }
+        return ApiResponse.ok(service.danhSachDatPhongGanDay(limit, q));
     }
 
-    @PostMapping("/them-chi-tiet")
-    public ApiResponse<Void> themChiTiet(@Valid @RequestBody ThemChiTietDatPhongRequest req) {
-        service.themChiTietDatPhong(req.maDatPhong(), req.maPhong(), req.donGia());
-        return ApiResponse.ok(null);
+    @GetMapping("/dat-phong/{maDatPhong}")
+    public ApiResponse<DatPhongSummaryDto> thongTinDatPhong(@PathVariable Integer maDatPhong) {
+        return ApiResponse.ok(service.thongTinDatPhong(maDatPhong));
+    }
+
+    @PostMapping("/dat-phong-nhanh")
+    public ApiResponse<Integer> datPhongNhanh(@Valid @RequestBody DatPhongNhanhRequest req) {
+        if (!req.ngayTra().isAfter(req.ngayNhan())) {
+            throw new IllegalArgumentException("ngayTra phải lớn hơn ngayNhan");
+        }
+
+        Integer maDatPhong = service.datPhongNhanh(req.maKh(), req.maNv(), req.ngayNhan(), req.ngayTra(), req.maPhong());
+        return ApiResponse.ok(maDatPhong);
     }
 
     @PostMapping("/tra-phong")
     public ApiResponse<Void> traPhong(@Valid @RequestBody TraPhongRequest req) {
         service.traPhong(req.maDatPhong());
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/nhan-phong")
+    public ApiResponse<Void> nhanPhong(@Valid @RequestBody NhanPhongRequest req) {
+        service.nhanPhong(req.maDatPhong());
         return ApiResponse.ok(null);
     }
 
