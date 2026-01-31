@@ -1,5 +1,6 @@
 package com.chauphat.qldatphong.domain.service.procedure;
 
+import com.chauphat.qldatphong.api.dto.procedure.BaoCaoDoanhThuCursorDto;
 import com.chauphat.qldatphong.api.dto.procedure.DatPhongSummaryDto;
 import com.chauphat.qldatphong.domain.entity.Phong;
 import com.chauphat.qldatphong.domain.entity.LoaiPhong;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -164,6 +166,19 @@ public class DatPhongProcedureService {
         return value != null ? value : BigDecimal.ZERO;
     }
 
+    @SuppressWarnings("unchecked")
+    public List<BaoCaoDoanhThuCursorDto> baoCaoDoanhThuCursorReport() {
+        SimpleJdbcCall call = new SimpleJdbcCall(dataSource)
+                .withSchemaName("dbo")
+                .withProcedureName("sp_baoCaoDoanhThu_cursor_report")
+                .withoutProcedureColumnMetaDataAccess()
+                .returningResultSet("result", new BaoCaoDoanhThuCursorRowMapper());
+
+        Map<String, Object> out = call.execute(new MapSqlParameterSource());
+        List<BaoCaoDoanhThuCursorDto> rows = (List<BaoCaoDoanhThuCursorDto>) out.get("result");
+        return rows == null ? List.of() : rows;
+    }
+
     private static class PhongRowMapper implements RowMapper<Phong> {
         @Override
         public Phong mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -198,6 +213,21 @@ public class DatPhongProcedureService {
                     ngayTraTs != null ? ngayTraTs.toLocalDateTime() : null,
                     rs.getString("TrangThai"),
                     (Integer) rs.getObject("SoPhong"),
+                    rs.getBigDecimal("TongTien")
+            );
+        }
+    }
+
+    private static class BaoCaoDoanhThuCursorRowMapper implements RowMapper<BaoCaoDoanhThuCursorDto> {
+        @Override
+        public BaoCaoDoanhThuCursorDto mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Timestamp ngayDatTs = rs.getTimestamp("NgayDat");
+            return new BaoCaoDoanhThuCursorDto(
+                    (Integer) rs.getObject("MaDatPhong"),
+                    (Integer) rs.getObject("MaKH"),
+                    rs.getString("HoTenKH"),
+                    ngayDatTs != null ? ngayDatTs.toLocalDateTime() : null,
+                    rs.getString("TrangThai"),
                     rs.getBigDecimal("TongTien")
             );
         }

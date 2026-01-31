@@ -1,6 +1,7 @@
 package com.chauphat.qldatphong.api.controller;
 
 import com.chauphat.qldatphong.api.dto.PhongDto;
+import com.chauphat.qldatphong.api.dto.procedure.BaoCaoDoanhThuCursorDto;
 import com.chauphat.qldatphong.api.dto.procedure.DatPhongNhanhRequest;
 import com.chauphat.qldatphong.api.dto.procedure.DatPhongSummaryDto;
 import com.chauphat.qldatphong.api.dto.procedure.DoanhThuTheoThangRequest;
@@ -22,6 +23,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DatPhongProcedureController {
     private final DatPhongProcedureService service;
+
+    @GetMapping("/bao-cao-doanh-thu-cursor")
+    public ApiResponse<List<BaoCaoDoanhThuCursorDto>> baoCaoDoanhThuCursor() {
+        return ApiResponse.ok(service.baoCaoDoanhThuCursorReport());
+    }
 
     @GetMapping("/danh-sach-dat-phong")
     public ApiResponse<List<DatPhongSummaryDto>> danhSachDatPhong(

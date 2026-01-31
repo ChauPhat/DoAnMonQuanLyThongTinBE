@@ -142,7 +142,7 @@ values
 go
 
 -- function
-create function fn_tinhSoNgayThue
+create or alter function dbo.fn_tinhSoNgayThue
 (
     @NgayNhan datetime,
     @NgayTra datetime
@@ -206,7 +206,7 @@ go
 
 
 -- sp dat phong nhanh (tạo đặt phòng + tự thêm chi tiết theo danh sách phòng)
-create procedure sp_datPhongNhanh
+create or alter procedure dbo.sp_datPhongNhanh
     @MaKH int,
     @MaNV int,
     @NgayNhan datetime,
@@ -355,7 +355,7 @@ end;
 go
 
 -- sp nhan phong (check-in)
-create procedure sp_nhanPhong
+create or alter procedure dbo.sp_nhanPhong
     @MaDatPhong int
 as
 begin
@@ -410,7 +410,7 @@ end;
 go
 
 -- sp tra phong
-create procedure sp_traPhong
+create or alter procedure dbo.sp_traPhong
     @MaDatPhong int
 as
 begin
@@ -429,7 +429,7 @@ end;
 go
 
 -- sp phong trong
-create procedure sp_phongTrong
+create or alter procedure dbo.sp_phongTrong
 as
 begin
     select *
@@ -439,7 +439,7 @@ end;
 go
 
 -- sp phong da dat theo khoang thoi gian
-create procedure sp_phongDaDatTheoKhoangThoiGian
+create or alter procedure dbo.sp_phongDaDatTheoKhoangThoiGian
     @TuNgay datetime,
     @DenNgay datetime
 as
@@ -459,7 +459,7 @@ end;
 go
 
 -- sp tinh doanh thu theo thang
-create procedure sp_tinhDoanhThuTheoThang
+create or alter procedure dbo.sp_tinhDoanhThuTheoThang
     @Thang int,
     @Nam int
 as
@@ -472,7 +472,7 @@ end;
 go
 
 -- sp bao cao doanh thu dung cursor
-create procedure sp_baoCaoDoanhThu_cursor
+create or alter procedure dbo.sp_baoCaoDoanhThu_cursor
 as
 begin
     declare @MaDatPhong int, @TongTien decimal(18,2);
@@ -498,8 +498,67 @@ begin
 end;
 go
 
+-- sp bao cao doanh thu dung cursor (RETURN result set cho FE)
+create or alter procedure dbo.sp_baoCaoDoanhThu_cursor_report
+as
+begin
+    set nocount on;
+
+    declare
+        @MaDatPhong int,
+        @MaKH int,
+        @HoTenKH nvarchar(100),
+        @NgayDat datetime,
+        @TrangThai nvarchar(30),
+        @TongTien decimal(18,2);
+
+    declare @Report table (
+        MaDatPhong int not null,
+        MaKH int not null,
+        HoTenKH nvarchar(100) not null,
+        NgayDat datetime not null,
+        TrangThai nvarchar(30) not null,
+        TongTien decimal(18,2) not null
+    );
+
+    declare cur_doanhthu_report cursor for
+        select
+            dp.MaDatPhong,
+            dp.MaKH,
+            kh.HoTen as HoTenKH,
+            dp.NgayDat,
+            dp.TrangThai,
+            isnull((
+                select sum(isnull(ct.ThanhTien, ct.DonGia * ct.SoNgay))
+                from chi_tiet_dat_phong ct
+                where ct.MaDatPhong = dp.MaDatPhong
+            ), 0) as TongTien
+        from dat_phong dp
+        join khach_hang kh on kh.MaKH = dp.MaKH
+        order by dp.MaDatPhong desc;
+
+    open cur_doanhthu_report;
+    fetch next from cur_doanhthu_report into @MaDatPhong, @MaKH, @HoTenKH, @NgayDat, @TrangThai, @TongTien;
+
+    while @@fetch_status = 0
+    begin
+        insert into @Report(MaDatPhong, MaKH, HoTenKH, NgayDat, TrangThai, TongTien)
+        values (@MaDatPhong, @MaKH, @HoTenKH, @NgayDat, @TrangThai, isnull(@TongTien, 0));
+
+        fetch next from cur_doanhthu_report into @MaDatPhong, @MaKH, @HoTenKH, @NgayDat, @TrangThai, @TongTien;
+    end;
+
+    close cur_doanhthu_report;
+    deallocate cur_doanhthu_report;
+
+    select *
+    from @Report
+    order by MaDatPhong desc;
+end;
+go
+
 -- sp danh sach dat phong (phục vụ combobox: mã gần đây + search theo mã)
-create procedure sp_danhSachDatPhong
+create or alter procedure dbo.sp_danhSachDatPhong
     @Limit int = 20,
     @Search nvarchar(50) = null
 as
@@ -535,7 +594,7 @@ end;
 go
 
 -- sp thong tin dat phong theo ma (phục vụ khi user gõ mã bất kỳ)
-create procedure sp_thongTinDatPhong
+create or alter procedure dbo.sp_thongTinDatPhong
     @MaDatPhong int
 as
 begin
