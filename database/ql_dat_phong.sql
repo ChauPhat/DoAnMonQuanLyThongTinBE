@@ -546,10 +546,27 @@ create or alter procedure dbo.sp_traPhong
     @MaDatPhong int
 as
 begin
+    set nocount on;
+
+    if not exists (select 1 from dat_phong where MaDatPhong = @MaDatPhong)
+    begin
+        raiserror(N'MaDatPhong không tồn tại', 16, 1);
+        return;
+    end
+
+    -- Chỉ cho trả phòng khi đang ở trạng thái "đã nhận phòng"
     update dat_phong
     set TrangThai = N'đã trả phòng'
-    where MaDatPhong = @MaDatPhong;
+    where MaDatPhong = @MaDatPhong
+      and TrangThai = N'đã nhận phòng';
 
+    if @@rowcount = 0
+    begin
+        raiserror(N'Chỉ có thể trả phòng khi trạng thái là "đã nhận phòng"', 16, 1);
+        return;
+    end
+
+    -- Cập nhật phòng về trạng thái trống
     update phong
     set TrangThai = N'trống'
     where MaPhong in (
@@ -557,6 +574,28 @@ begin
         from chi_tiet_dat_phong
         where MaDatPhong = @MaDatPhong
     );
+
+    -- Tự động thanh toán tiền mặt
+    declare @TongTien decimal(18,2);
+    select @TongTien = isnull(sum(isnull(ThanhTien, DonGia * SoNgay)), 0)
+    from chi_tiet_dat_phong
+    where MaDatPhong = @MaDatPhong;
+
+    if exists (select 1 from thanh_toan where MaDatPhong = @MaDatPhong)
+    begin
+        update thanh_toan
+        set
+            NgayThanhToan = isnull(NgayThanhToan, getdate()),
+            SoTien = @TongTien,
+            PhuongThuc = N'Tiền mặt',
+            TrangThai = N'Đã thanh toán'
+        where MaDatPhong = @MaDatPhong;
+    end
+    else
+    begin
+        insert into thanh_toan (MaDatPhong, NgayThanhToan, SoTien, PhuongThuc, TrangThai)
+        values (@MaDatPhong, getdate(), @TongTien, N'Tiền mặt', N'Đã thanh toán');
+    end
 end;
 go
 
@@ -593,10 +632,13 @@ create or alter procedure dbo.sp_tinhDoanhThuTheoThang
     @Nam int
 as
 begin
-    select sum(SoTien) as TongDoanhThu
-    from thanh_toan
-    where month(NgayThanhToan) = @Thang
-      and year(NgayThanhToan) = @Nam;
+        -- Ghi chú: SUM() sẽ trả NULL nếu không có dòng nào thoả điều kiện.
+        -- Trả về 0 để FE hiển thị rõ ràng.
+        select isnull(sum(SoTien), 0) as TongDoanhThu
+        from thanh_toan
+        where NgayThanhToan is not null
+            and month(NgayThanhToan) = @Thang
+            and year(NgayThanhToan) = @Nam;
 end;
 go
 
